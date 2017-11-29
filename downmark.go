@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/net/html"
@@ -20,11 +21,21 @@ type DBody struct {
 	ParsedBody *html.Tokenizer
 }
 
+// Converted consist of basic information about converted body
+type Converted struct {
+	title string
+	index int
+	data  *[]string
+}
+
 // Conversion is a concurrent safe map with key of link index and value of pointer of the converted string slice
-type Conversion map[string]*[]string
+type Conversion map[string]*Converted
+
+// HandlerFunc is a func type using during convert
+type HandlerFunc func(cv *Converted, tr *html.Tokenizer, ch chan *Converted)
 
 const (
-	requestTimeOut = 5 * time.Second
+	requestTimeOut = 15 * time.Second
 )
 
 var wg sync.WaitGroup
@@ -39,6 +50,13 @@ func newDBody(i int, t *html.Tokenizer) DBody {
 	return DBody{
 		Index:      i,
 		ParsedBody: t,
+	}
+}
+
+func newConverted(i int) *Converted {
+	return &Converted{
+		title: "",
+		index: i,
 	}
 }
 
@@ -77,19 +95,23 @@ func completeProtocol(url string) string {
 	}
 }
 
-// ConvertToMarkDown order go-routines to get the http body the concurrently and convert them into markdown format
-func (d DLink) ConvertToMarkDown() (Conversion, error) {
+// Convert order go-routines to get the http body the concurrently and convert using handler func
+func (d DLink) Convert(h HandlerFunc) (Conversion, error) {
 	if len(d) == 0 {
 		return nil, fmt.Errorf("Not URL can be used")
 	}
 
 	convertedBody := newConversion()
 	tokenizerChan := make(chan *DBody)
+	convertedChan := make(chan *Converted)
 
 	timeOut := time.Duration(requestTimeOut)
 	client := http.Client{
 		Timeout: timeOut,
 	}
+
+	var successCounter int64
+	var failCounter int64
 
 	for i, u := range d {
 		go func(id int, url string) {
@@ -97,6 +119,7 @@ func (d DLink) ConvertToMarkDown() (Conversion, error) {
 
 			if err != nil {
 				fmt.Println(url + "FAIL in request")
+				atomic.AddInt64(&failCounter, 1)
 				return
 			}
 
@@ -104,9 +127,26 @@ func (d DLink) ConvertToMarkDown() (Conversion, error) {
 
 			dBody := newDBody(id, html.NewTokenizer(resp.Body))
 
+			atomic.AddInt64(&successCounter, 1)
+
 			tokenizerChan <- &dBody
 		}(i, u)
 	}
+
+	for dy := range tokenizerChan {
+		if atomic.LoadInt64(&successCounter)+atomic.LoadInt64(&failCounter) == int64(len(d)) {
+			close(tokenizerChan)
+		}
+
+		go h(newConverted(dy.Index), dy.ParsedBody, convertedChan)
+	}
+
+	for successCounter > 0 {
+		cd := <-convertedChan
+		convertedBody[string(cd.index)] = cd
+		successCounter--
+	}
+	close(convertedChan)
 
 	return convertedBody, nil
 }

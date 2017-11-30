@@ -45,19 +45,41 @@ func exampleFunc(cv *Converted, tr *html.Tokenizer, ch chan *Converted) {
 func Test_handler(t *testing.T) {
 	d := NewDLink()
 
-	d.AddLink("http://www.google.com")
+	d.AddLink("://www.google.com")
 	d.AddLink("http://www.youtube.com")
 	d.AddLink("https://www.washingtonpost.com/")
 
 	cv, _ := d.Convert(exampleFunc)
 	var testStr string
 
-	for i := 0; i < 3; i++ {
-		s := *(cv[string(i)].data)
-		testStr += s[0]
+	for i := 0; i < len(d); i++ {
+		c, contains := cv[string(i)]
+
+		if contains {
+			s := *c.data
+			testStr += s[0]
+		}
 	}
 
 	if testStr != "abc" {
 		t.Errorf("Expected 'abc' but got '%v' ", testStr)
+	}
+}
+
+func Test_failure(t *testing.T) {
+	d := NewDLink()
+
+	d.AddLink("://www.nkvxxnvhh.com")
+	d.AddLink("http://youtouneaube.com")
+	d.AddLink("https://www.waffawshinnjbgtonpost.com/")
+
+	cv, _ := d.Convert(exampleFunc)
+
+	for i := 0; i < len(d); i++ {
+		_, contains := cv[string(i)]
+		t.Log("Expected ALL fail when request")
+		if contains {
+			t.Errorf("It should be no any index key in it when every request fail")
+		}
 	}
 }

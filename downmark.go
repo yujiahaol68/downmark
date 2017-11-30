@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/net/html"
@@ -110,35 +109,40 @@ func (d DLink) Convert(h HandlerFunc) (Conversion, error) {
 		Timeout: timeOut,
 	}
 
-	var successCounter int64
-	var failCounter int64
+	var totalCount int
+	var successCounter int
 
 	for i, u := range d {
 		go func(id int, url string) {
 			resp, err := client.Get(url)
 
 			if err != nil {
-				fmt.Println(url + "FAIL in request")
-				atomic.AddInt64(&failCounter, 1)
+				fmt.Println("FAIL in request --> " + url)
+
+				failure := newDBody(id, nil)
+				tokenizerChan <- &failure
+
 				return
 			}
 
 			defer resp.Body.Close()
 
 			dBody := newDBody(id, html.NewTokenizer(resp.Body))
-
-			atomic.AddInt64(&successCounter, 1)
-
 			tokenizerChan <- &dBody
 		}(i, u)
 	}
 
 	for dy := range tokenizerChan {
-		if atomic.LoadInt64(&successCounter)+atomic.LoadInt64(&failCounter) == int64(len(d)) {
+		totalCount++
+
+		if totalCount == len(d) {
 			close(tokenizerChan)
 		}
 
-		go h(newConverted(dy.Index), dy.ParsedBody, convertedChan)
+		if dy.ParsedBody != nil {
+			successCounter++
+			go h(newConverted(dy.Index), dy.ParsedBody, convertedChan)
+		}
 	}
 
 	for successCounter > 0 {

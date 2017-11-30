@@ -83,3 +83,13 @@ func Test_failure(t *testing.T) {
 		}
 	}
 }
+
+func Test_emptyConvert(t *testing.T) {
+	d := NewDLink()
+
+	_, err := d.Convert(exampleFunc)
+
+	if err == nil {
+		t.Errorf("Should have ERROR since no link inside when convert")
+	}
+}

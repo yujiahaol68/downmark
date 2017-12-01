@@ -19,8 +19,13 @@ const (
 )
 
 var (
-	title  string
-	ignore = true
+	title        string
+	ignore       = true
+	insideLink   = false
+	imgTemplate  = "![](%s)"
+	linkTemplate = "[%s](%s)"
+	aText        string
+	href         string
 )
 
 var validTag = map[string]string{
@@ -31,7 +36,7 @@ var validTag = map[string]string{
 	"h3":         "### %s",
 	"h4":         "#### %s",
 	"p":          "%s",
-	"strong":     "**%s**",
+	"strong":     "__%s__",
 	"span":       "%s",
 	"em":         "*%s*",
 	"li":         "- %s",
@@ -127,16 +132,56 @@ func MdConvertor(tr *html.Tokenizer) []string {
 			continue
 		}
 
+		if token.Data == "a" && tokenType == html.StartTagToken {
+			for _, a := range token.Attr {
+				if a.Key == "href" {
+					href = a.Val
+					insideLink = true
+					break
+				}
+			}
+			continue
+		}
+
+		if isImgTag(token.Data) {
+			attrName := imgAttr[token.Data]
+			for _, a := range token.Attr {
+				if a.Key == attrName {
+					converted = append(converted, fmt.Sprintf(imgTemplate, a.Val))
+					break
+				}
+			}
+			continue
+		}
+
 		if tokenType == html.StartTagToken {
 			_, contains := validTag[token.Data]
 
-			if contains {
+			if contains && !insideLink {
 				tStack.push(NewTagToken(token.Data))
 				ignore = false
 				continue
 			}
 			continue
 		} else if ignore == false && tokenType == html.TextToken && !tStack.isEmpty() {
+
+			if insideLink {
+				// Has separator or not to judge whether render outter tag first
+				if strings.Contains(tempRenderStr, separator) {
+					tempRenderStr += fmt.Sprintf(linkTemplate, token.Data, href)
+				} else {
+					topTagName := tStack.peek()
+					s, needPop := renderLink(token.Data, href, topTagName)
+					if needPop {
+						tStack.pop()
+					}
+					tempRenderStr += s
+				}
+
+				insideLink = false
+				href = ""
+				continue
+			}
 
 			if tempRenderStr == "" || tStack.size() == 1 {
 				tempRenderStr += token.Data
@@ -149,14 +194,18 @@ func MdConvertor(tr *html.Tokenizer) []string {
 
 			if contains && tStack.match(token.Data) {
 				if tStack.size() == 1 {
+
 					converted = append(converted, renderNormal(tStack.pop(), tempRenderStr))
 					tempRenderStr = ""
 					ignore = true
+
 				} else {
+
 					ss := strings.Split(tempRenderStr, separator)
 					if len(ss) == 2 {
 						tempRenderStr = concat(ss[0], renderNormal(tStack.pop(), ss[1]))
 					}
+
 				}
 			}
 		}
@@ -166,6 +215,16 @@ func MdConvertor(tr *html.Tokenizer) []string {
 
 func renderNormal(tagName string, s string) string {
 	return fmt.Sprintf(validTag[tagName], s)
+}
+
+func renderLink(text string, href string, outterT string) (string, bool) {
+	if text == "" {
+		text = href
+	}
+	if outterT == "p" || outterT == "span" {
+		return fmt.Sprintf(linkTemplate, text, href), false
+	}
+	return fmt.Sprintf(linkTemplate, renderNormal(outterT, text), href), true
 }
 
 func concat(s1 string, s2 string) string {
@@ -178,4 +237,9 @@ func concat(s1 string, s2 string) string {
 func getMemory(s string) string {
 	ss := strings.Split(s, separator)
 	return ss[len(ss)-1]
+}
+
+func isImgTag(tagName string) bool {
+	_, contain := imgAttr[tagName]
+	return contain
 }

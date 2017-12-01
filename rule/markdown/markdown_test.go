@@ -20,7 +20,7 @@ var img = `<img class="progressiveMedia-image" src="https://cdn-images-1.medium.
 
 var mTagp = "aaaa `down` bbbb*cccc*__dddd__"
 var mWithLink = "aaaa `down` [bbbb](http://tecknight.xyz)*cccc*dddd"
-var mCodeLink = "[`bbbb`](http://tecknight.xyz)"
+var mCodeLink = "[ `bbbb` ](http://tecknight.xyz)"
 var mHeader = "# aaaa\n## bbbb-----### cccc"
 var mImg = "![](https://cdn-images-1.medium.com/max/1000/1*H0luK0YxgVlSkXqFsyhSnw.png)"
 
@@ -72,8 +72,13 @@ func Test_img(t *testing.T) {
 
 func Test_link(t *testing.T) {
 	s := injectTestCaseAndExec(withLink)
+	cs := injectTestCaseAndExec(codeLink)
 
 	if s[0] != mWithLink {
 		t.Errorf("\nExpected:\n%s\nBut got\n%s", mWithLink, s[0])
+	}
+
+	if cs[0] != mCodeLink {
+		t.Errorf("\nExpected:\n%s\nBut got\n%s", mCodeLink, cs[0])
 	}
 }

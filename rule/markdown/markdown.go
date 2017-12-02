@@ -8,10 +8,12 @@ import (
 	"golang.org/x/net/html"
 )
 
+// TagToken type struct will be stored in the TokenStack
 type TagToken struct {
 	tagName string
 }
 
+// TokenStack can store tag that want to to be deferred rendering
 type TokenStack []TagToken
 
 const (
@@ -50,12 +52,14 @@ var imgAttr = map[string]string{
 	"image": "href",
 }
 
+// NewTagToken construct a new TagToken
 func NewTagToken(name string) TagToken {
 	return TagToken{
 		tagName: name,
 	}
 }
 
+// NewTokenStack construct a stack to actually store the TagToken
 func NewTokenStack() TokenStack {
 	return []TagToken{}
 }
@@ -98,6 +102,7 @@ func (t *TokenStack) print() {
 	fmt.Printf("\n\n")
 }
 
+// MdConvertor provide a handlerFunc plugin for downmark package
 func MdConvertor(tr *html.Tokenizer) []string {
 	for {
 		tt := tr.Next()
@@ -232,11 +237,6 @@ func concat(s1 string, s2 string) string {
 	b.WriteString(s1)
 	b.WriteString(s2)
 	return b.String()
-}
-
-func getMemory(s string) string {
-	ss := strings.Split(s, separator)
-	return ss[len(ss)-1]
 }
 
 func isImgTag(tagName string) bool {

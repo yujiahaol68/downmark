@@ -17,6 +17,7 @@ var codeLink = `<p><code><a href="http://tecknight.xyz"><em>bbbb</em></a></code>
 var linkCase = `<p><code><a href="https://golang.org/pkg/builtin/#recover" data-href="https://golang.org/pkg/builtin/#recover"><em class="markup--em markup--p-em">recover()</em></a></code><em class="markup--em markup--p-em"> returns the value provided to </em><code class="markup--code markup--p-code"><a href="https://golang.org/pkg/builtin/#panic" data-href="https://golang.org/pkg/builtin/#panic" class="markup--anchor markup--p-anchor" rel="noopener" target="_blank"><em class="markup--em markup--p-em">panic()</em></a></code><em class="markup--em markup--p-em"> which let’s you decide what you’d do with it. You can also pass an error or other types of values to panic, then you can check whether the panic was caused by the value you’re looking for. More </em><a href="https://blog.golang.org/defer-panic-and-recover" data-href="https://blog.golang.org/defer-panic-and-recover" class="markup--anchor markup--p-anchor" rel="noopener" target="_blank"><em class="markup--em markup--p-em">here</em></a><em class="markup--em markup--p-em">.</em></p>`
 var header = `<h1>aaaa</h1><br><h2>bbbb</h2><hr><h3>cccc</h3>`
 var img = `<img class="progressiveMedia-image" src="https://cdn-images-1.medium.com/max/1000/1*H0luK0YxgVlSkXqFsyhSnw.png">`
+var pre = `<pre><strong>type</strong> Car <strong>struct</strong> {<br>  model <strong>string</strong><br>}</pre>`
 
 var mTagp = "aaaa `down` bbbb*cccc*__dddd__"
 var mWithLink = "aaaa `down` [bbbb](http://tecknight.xyz)*cccc*dddd"

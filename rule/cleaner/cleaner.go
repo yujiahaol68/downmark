@@ -8,11 +8,23 @@ import (
 	"golang.org/x/net/html"
 )
 
+// TagToken type struct will be stored in the TokenStack
+type TagToken struct {
+	tagName string
+}
+
+// TokenStack can store tag that want to to be deferred rendering
+type TokenStack []TagToken
+
 var (
 	title           string
 	ignore          = false
 	currentTag      string
 	couldGetContent = false
+	ruleTag         string
+	ruleClass       string
+	ruleValid       string
+	ruleEnable      = false
 )
 
 var validTag = map[string]string{
@@ -32,6 +44,61 @@ var validTag = map[string]string{
 	"pre":        "",
 }
 
+// NewTagToken construct a new TagToken
+func NewTagToken(name string) TagToken {
+	return TagToken{
+		tagName: name,
+	}
+}
+
+// NewTokenStack construct a stack to actually store the TagToken
+func NewTokenStack() TokenStack {
+	return []TagToken{}
+}
+
+func (t *TokenStack) size() int {
+	return len(*t)
+}
+
+func (t *TokenStack) match(newTagName string) bool {
+	if t.isEmpty() {
+		return false
+	}
+	topTag := (*t)[len(*t)-1]
+	return topTag.tagName == newTagName
+}
+
+func (t *TokenStack) push(tag TagToken) {
+	*t = append(*t, tag)
+}
+
+func (t *TokenStack) isEmpty() bool {
+	return len(*t) == 0
+}
+
+func (t *TokenStack) pop() string {
+	d := (*t)[len(*t)-1]
+	(*t) = (*t)[:len(*t)-1]
+	return d.tagName
+}
+
+func (t *TokenStack) peek() string {
+	return (*t)[len(*t)-1].tagName
+}
+
+func (t *TokenStack) print() {
+	s := *t
+	for _, tag := range s {
+		fmt.Printf("%s, ", tag.tagName)
+	}
+	fmt.Printf("\n\n")
+}
+
+func DefineRules(className string) {
+	ruleTag = "div"
+	ruleClass = className
+}
+
 func CleanConvertor(tr *html.Tokenizer) bytes.Buffer {
 	for {
 		tt := tr.Next()
@@ -45,6 +112,7 @@ func CleanConvertor(tr *html.Tokenizer) bytes.Buffer {
 	}
 
 	var b bytes.Buffer
+	tStack := NewTokenStack()
 
 	for {
 		tokenType := tr.Next()
@@ -55,13 +123,47 @@ func CleanConvertor(tr *html.Tokenizer) bytes.Buffer {
 
 		token := tr.Token()
 
-		if token.Data == "style" || token.Data == "script" {
+		if isInvalidTag(token.Data) {
 			if tokenType == html.StartTagToken {
-				ignore = true
-			} else {
-				ignore = false
+				tokenType = tr.Next()
+				token = tr.Token()
+				for !isInvalidTag(token.Data) {
+					tokenType = tr.Next()
+					token = tr.Token()
+				}
 			}
-			continue
+		}
+
+		if ruleTag != "" && token.Data == ruleTag {
+			if tokenType == html.StartTagToken {
+				if ruleEnable {
+					tStack.push(NewTagToken(ruleTag))
+					continue
+				}
+
+				for _, a := range token.Attr {
+					if a.Key == "class" {
+						classAttrs := strings.Split(a.Val, " ")
+						for _, className := range classAttrs {
+							if className == ruleClass {
+								tStack.push(NewTagToken(ruleClass))
+								ruleEnable = true
+								b.Reset()
+								break
+							}
+						}
+						continue
+					}
+				}
+			} else if tokenType == html.EndTagToken {
+				if ruleEnable {
+					tStack.pop()
+					if tStack.isEmpty() {
+						break
+					}
+					continue
+				}
+			}
 		}
 
 		if token.Data == "article" {
@@ -112,4 +214,8 @@ func createStartTag(tagName string) string {
 
 func createEndTag(tagName string) string {
 	return fmt.Sprintf("</%s>", tagName)
+}
+
+func isInvalidTag(name string) bool {
+	return name == "script" || name == "style"
 }

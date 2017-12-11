@@ -1,4 +1,4 @@
-package cleaner
+package rule
 
 import (
 	"fmt"

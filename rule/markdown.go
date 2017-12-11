@@ -1,4 +1,4 @@
-package markdown
+package rule
 
 import (
 	"bytes"
@@ -8,20 +8,11 @@ import (
 	"golang.org/x/net/html"
 )
 
-// TagToken type struct will be stored in the TokenStack
-type TagToken struct {
-	tagName string
-}
-
-// TokenStack can store tag that want to to be deferred rendering
-type TokenStack []TagToken
-
 const (
 	separator = "<>"
 )
 
 var (
-	title        string
 	ignore       = true
 	insideLink   = false
 	imgTemplate  = "![](%s)"
@@ -30,7 +21,7 @@ var (
 	href         string
 )
 
-var validTag = map[string]string{
+var mdTag = map[string]string{
 	"a":          "%s",
 	"blockquote": "> %s",
 	"h1":         "# %s",
@@ -50,56 +41,6 @@ var validTag = map[string]string{
 var imgAttr = map[string]string{
 	"img":   "src",
 	"image": "href",
-}
-
-// NewTagToken construct a new TagToken
-func NewTagToken(name string) TagToken {
-	return TagToken{
-		tagName: name,
-	}
-}
-
-// NewTokenStack construct a stack to actually store the TagToken
-func NewTokenStack() TokenStack {
-	return []TagToken{}
-}
-
-func (t *TokenStack) size() int {
-	return len(*t)
-}
-
-func (t *TokenStack) match(newTagName string) bool {
-	if t.isEmpty() {
-		return false
-	}
-	topTag := (*t)[len(*t)-1]
-	return topTag.tagName == newTagName
-}
-
-func (t *TokenStack) push(tag TagToken) {
-	*t = append(*t, tag)
-}
-
-func (t *TokenStack) isEmpty() bool {
-	return len(*t) == 0
-}
-
-func (t *TokenStack) pop() string {
-	d := (*t)[len(*t)-1]
-	(*t) = (*t)[:len(*t)-1]
-	return d.tagName
-}
-
-func (t *TokenStack) peek() string {
-	return (*t)[len(*t)-1].tagName
-}
-
-func (t *TokenStack) print() {
-	s := *t
-	for _, tag := range s {
-		fmt.Printf("%s, ", tag.tagName)
-	}
-	fmt.Printf("\n\n")
 }
 
 // MdConvertor provide a handlerFunc plugin for downmark package
@@ -133,7 +74,7 @@ func MdConvertor(tr *html.Tokenizer) []string {
 		// fmt.Println(tempRenderStr)
 
 		if token.Data == "hr" || token.Data == "br" {
-			converted = append(converted, validTag[token.Data])
+			converted = append(converted, mdTag[token.Data])
 			continue
 		}
 
@@ -160,7 +101,7 @@ func MdConvertor(tr *html.Tokenizer) []string {
 		}
 
 		if tokenType == html.StartTagToken {
-			_, contains := validTag[token.Data]
+			_, contains := mdTag[token.Data]
 
 			if contains && !insideLink {
 				tStack.push(NewTagToken(token.Data))
@@ -195,7 +136,7 @@ func MdConvertor(tr *html.Tokenizer) []string {
 			}
 
 		} else if tokenType == html.EndTagToken {
-			_, contains := validTag[token.Data]
+			_, contains := mdTag[token.Data]
 
 			if contains && tStack.match(token.Data) {
 				if tStack.size() == 1 {
@@ -219,7 +160,7 @@ func MdConvertor(tr *html.Tokenizer) []string {
 }
 
 func renderNormal(tagName string, s string) string {
-	return fmt.Sprintf(validTag[tagName], s)
+	return fmt.Sprintf(mdTag[tagName], s)
 }
 
 func renderLink(text string, href string, outterT string) (string, bool) {

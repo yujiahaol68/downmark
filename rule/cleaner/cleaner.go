@@ -175,6 +175,15 @@ func CleanConvertor(tr *html.Tokenizer) bytes.Buffer {
 			}
 		}
 
+		if token.Data == "img" {
+			for _, a := range token.Attr {
+				if a.Key == "src" {
+					b.WriteString(fmt.Sprintf("<img src=\"%s\">", a.Val))
+					continue
+				}
+			}
+		}
+
 		if token.Data == "hr" || token.Data == "br" {
 			b.WriteString(fmt.Sprintf("<%s>", token.Data))
 			continue

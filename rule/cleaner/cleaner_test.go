@@ -15,6 +15,6 @@ func Test_convertor(t *testing.T) {
 	tr := html.NewTokenizer(resp.Body)
 
 	DefineRules("story-body__inner")
-	b := CleanConvertor(tr)
+	_, b := CleanConvertor(tr)
 	fmt.Printf("%s", b.String())
 }

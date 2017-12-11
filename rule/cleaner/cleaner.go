@@ -99,7 +99,7 @@ func DefineRules(className string) {
 	ruleClass = className
 }
 
-func CleanConvertor(tr *html.Tokenizer) bytes.Buffer {
+func CleanConvertor(tr *html.Tokenizer) (string, bytes.Buffer) {
 	for {
 		tt := tr.Next()
 		t := tr.Token()
@@ -214,7 +214,7 @@ func CleanConvertor(tr *html.Tokenizer) bytes.Buffer {
 		}
 	}
 
-	return b
+	return title, b
 }
 
 func createStartTag(tagName string) string {

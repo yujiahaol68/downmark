@@ -4,17 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"sync"
 
 	"golang.org/x/net/html"
 )
 
 var (
-	currentTag      string
-	couldGetContent = false
-	ruleTag         string
-	ruleClass       string
-	ruleValid       string
-	ruleEnable      = false
+	mutex sync.Mutex
 )
 
 var validTag = map[string]string{
@@ -34,12 +30,25 @@ var validTag = map[string]string{
 	"pre":        "",
 }
 
-func DefineRules(className string) {
-	ruleTag = "div"
-	ruleClass = className
-}
+// CleanConvertor return the title and the content of the html in cleaner way
+func CleanConvertor(tr *html.Tokenizer, rules ...string) (string, bytes.Buffer) {
+	var title string
+	couldGetContent := false
+	titleFound := false
+	ruleEnable := false
+	var ruleTag string
+	var ruleValue string
+	ruleAttr := "class"
 
-func CleanConvertor(tr *html.Tokenizer) (string, bytes.Buffer) {
+	if len(rules) == 2 {
+		ruleTag = rules[0]
+		ruleValue = rules[1]
+	} else if len(rules) == 3 {
+		ruleTag = rules[0]
+		ruleAttr = rules[1]
+		ruleValue = rules[2]
+	}
+
 	for {
 		tt := tr.Next()
 		t := tr.Token()
@@ -74,6 +83,12 @@ func CleanConvertor(tr *html.Tokenizer) (string, bytes.Buffer) {
 			}
 		}
 
+		if !titleFound && isTitleTag(token.Data) && tokenType == html.EndTagToken {
+			b.Reset()
+			titleFound = true
+			continue
+		}
+
 		if ruleTag != "" && token.Data == ruleTag {
 			if tokenType == html.StartTagToken {
 				if ruleEnable {
@@ -82,11 +97,11 @@ func CleanConvertor(tr *html.Tokenizer) (string, bytes.Buffer) {
 				}
 
 				for _, a := range token.Attr {
-					if a.Key == "class" {
-						classAttrs := strings.Split(a.Val, " ")
-						for _, className := range classAttrs {
-							if className == ruleClass {
-								tStack.push(NewTagToken(ruleClass))
+					if a.Key == ruleAttr {
+						vals := strings.Split(a.Val, " ")
+						for _, val := range vals {
+							if val == ruleValue {
+								tStack.push(NewTagToken(ruleTag))
 								ruleEnable = true
 								b.Reset()
 								break
@@ -130,7 +145,9 @@ func CleanConvertor(tr *html.Tokenizer) (string, bytes.Buffer) {
 		}
 
 		if tokenType == html.StartTagToken {
+			mutex.Lock()
 			_, contains := validTag[token.Data]
+			mutex.Unlock()
 
 			if contains {
 				couldGetContent = true
@@ -146,7 +163,9 @@ func CleanConvertor(tr *html.Tokenizer) (string, bytes.Buffer) {
 				b.WriteString(es)
 			}
 		} else if tokenType == html.EndTagToken {
+			mutex.Lock()
 			_, has := validTag[token.Data]
+			mutex.Unlock()
 
 			if has {
 				b.WriteString(createEndTag(token.Data))
@@ -167,4 +186,8 @@ func createEndTag(tagName string) string {
 
 func isInvalidTag(name string) bool {
 	return name == "script" || name == "style"
+}
+
+func isTitleTag(tagName string) bool {
+	return tagName == "h1" || tagName == "h2"
 }

@@ -46,7 +46,8 @@ func concatAll(s *[]string) string {
 func injectTestCaseAndExec(tCase string) []string {
 	r := strings.NewReader(fmt.Sprintf(HTMLTemplate, tCase))
 	tr := html.NewTokenizer(r)
-	return MdConvertor(tr)
+	_, s := MdConvertor(tr)
+	return s
 }
 
 func Test_tag_p(t *testing.T) {

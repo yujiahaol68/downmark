@@ -44,7 +44,9 @@ var imgAttr = map[string]string{
 }
 
 // MdConvertor provide a handlerFunc plugin for downmark package
-func MdConvertor(tr *html.Tokenizer) []string {
+func MdConvertor(tr *html.Tokenizer) (string, []string) {
+	var title string
+
 	for {
 		tt := tr.Next()
 		t := tr.Token()
@@ -156,7 +158,7 @@ func MdConvertor(tr *html.Tokenizer) []string {
 			}
 		}
 	}
-	return converted
+	return title, converted
 }
 
 func renderNormal(tagName string, s string) string {

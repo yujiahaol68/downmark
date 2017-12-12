@@ -2,10 +2,6 @@ package rule
 
 import "fmt"
 
-var (
-	title string
-)
-
 // TagToken type struct will be stored in the TokenStack
 type TagToken struct {
 	tagName string

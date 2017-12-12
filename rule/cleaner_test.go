@@ -9,12 +9,20 @@ import (
 )
 
 func Test_convertor(t *testing.T) {
-	url := "http://www.bbc.com/news/world-middle-east-42297437"
+	url := "http://www.chinadaily.com.cn/a/201712/11/WS5a2e2bbea310eefe3e9a2918.html"
 	resp, _ := http.Get(url)
 
 	tr := html.NewTokenizer(resp.Body)
 
-	DefineRules("story-body__inner")
-	_, b := CleanConvertor(tr)
+	_, b := CleanConvertor(tr, "div", "id", "Content")
 	fmt.Printf("%s", b.String())
+
+	res, err := http.Get("http://www.bbc.com/news/uk-42318755")
+	if err != nil {
+		return
+	}
+
+	trr := html.NewTokenizer(res.Body)
+	_, bf := CleanConvertor(trr, "div", "story-body__inner")
+	fmt.Printf("%s", bf.String())
 }
